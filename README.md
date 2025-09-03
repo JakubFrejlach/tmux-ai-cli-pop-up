@@ -46,12 +46,15 @@ The popup will open at 80% width and 75% height, centered on your screen.
 
 ## Configuration
 
-You can customize the key bindings by setting these options in your `~/.tmux.conf`:
+You can customize the key bindings and shell by setting these options in your `~/.tmux.conf`:
 
 ```bash
 # Customize key bindings (defaults shown)
 set -g @tmux_ai_claude_key 'u'
 set -g @tmux_ai_gemini_key 'j'
+
+# Customize shell (defaults to zsh)
+set -g @tmux_ai_shell 'zsh'  # or 'bash'
 ```
 
 ## How It Works
@@ -71,7 +74,10 @@ set -g @tmux_ai_gemini_key 'j'
 - This ensures the AI tools have proper context of your project
 
 ### Shell Integration
-- Scripts source your shell configuration (`~/.zshrc`) before launching the AI tools
+- Scripts automatically detect your configured shell (bash or zsh)
+- Sources the appropriate shell configuration:
+  - `~/.bashrc` for bash
+  - `~/.zshrc` for zsh (default)
 - This ensures all your aliases, functions, and environment variables are available
 - Requires `claude` and `gemini` commands to be available in your PATH
 

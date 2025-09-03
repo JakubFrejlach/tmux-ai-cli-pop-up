@@ -11,6 +11,9 @@ set -uo pipefail
 # If for some reason it's not provided, fall back to the script's actual PWD.
 script_initial_dir="${1:-$(pwd)}"
 
+# Get the shell type from the second argument, default to zsh
+shell_type="${2:-zsh}"
+
 # Define default session suffix and max desired total length
 session_suffix="-gemini"
 max_total_session_length=18
@@ -82,8 +85,15 @@ fi
 # Define popup dimensions and position
 popup_options="-w 80% -h 75% -x C -y C -d \"${initial_session_dir}\""
 
+# Determine shell-specific configuration
+if [[ "$shell_type" == "bash" ]]; then
+    shell_init_file="~/.bashrc"
+else
+    shell_init_file="~/.zshrc"
+fi
+
 # The core command for the new session, which will run in the popup.
-core_session_command="tmux new-session -A -D -s \"${session_name}\" -c \"${initial_session_dir}\" \"zsh -c 'source ~/.zshrc; gemini'\""
+core_session_command="tmux new-session -A -D -s \"${session_name}\" -c \"${initial_session_dir}\" \"${shell_type} -c 'source ${shell_init_file}; gemini'\""
 
 # Now, launch the popup with this core command
 tmux display-popup -E ${popup_options} "${core_session_command}"
