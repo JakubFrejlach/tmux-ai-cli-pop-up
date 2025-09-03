@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Set options for robustness:
+# -u: Exit on unset variables.
+# -o pipefail: Exit if any command in a pipeline fails.
+# We will explicitly handle errors from 'git' commands to prevent 'set -e' from exiting the script.
+set -uo pipefail
+
+# Get the initial directory where the script was launched from.
+# This will be passed as the first argument from tmux.conf.
+# If for some reason it's not provided, fall back to the script's actual PWD.
+script_initial_dir="${1:-$(pwd)}"
+
+# Define default session suffix and max desired total length
+session_suffix="-gemini"
+max_total_session_length=18
+max_base_name_length=$((max_total_session_length - ${#session_suffix}))
+
+# Attempt to find the Git repository root
+git_root="" # This will hold the actual git root in the main script's scope
+is_in_git_repo=false # Flag to track if we successfully detected a git repo
+
+# Check if git command exists and if the initial directory is valid
+if command -v git &> /dev/null && [ -d "$script_initial_dir" ]; then
+    # Execute git commands in a subshell and CAPTURE ITS OUTPUT.
+    # The subshell will cd, check git, and PRINT the root if found.
+    temp_git_root_output=$(
+        sh -c "
+            set -euo pipefail # Strict options for the subshell
+            if pushd \"$script_initial_dir\" >/dev/null; then
+                if git rev-parse --is-inside-work-tree &>/dev/null; then
+                    git rev-parse --show-toplevel # <-- THIS IS PRINTED TO STDOUT OF THE SUBSHELL
+                fi
+                popd >/dev/null
+            else
+                exit 1 # Indicate failure to cd
+            fi
+        " || true # '|| true' prevents the main script from exiting if the subshell fails (e.g., not in git repo, or pushd failed)
+    )
+
+    # If temp_git_root_output is not empty, then git_root was found successfully
+    if [[ -n "$temp_git_root_output" ]]; then
+        git_root="$temp_git_root_output"
+        is_in_git_repo=true
+    fi
+fi
+
+# Now, echo git_root will show the correct value
+# echo "DEBUG: git_root after capture: $git_root"
+
+# Determine the base name for the session
+session_base_name=""
+if $is_in_git_repo; then # Use the flag for clarity
+    # Use the basename of the Git root directory if found
+    session_base_name=$(basename "$git_root")
+else
+    # Fallback to the basename of the initial_dir
+    session_base_name=$(basename "$script_initial_dir")
+fi
+
+# --- Shorten the session_base_name if it's too long ---
+if (( ${#session_base_name} > max_base_name_length )); then
+    truncated_length=$((max_base_name_length - 3)) # Reserve 3 chars for "..."
+    if (( truncated_length < 1 )); then
+        truncated_length=1
+    fi
+    session_base_name="${session_base_name:0:$truncated_length}..."
+fi
+# --- End shortening logic ---
+
+# Construct the full session name
+session_name="${session_base_name}${session_suffix}"
+
+# Determine the directory where the new session/popup should start.
+initial_session_dir=""
+if $is_in_git_repo; then
+    initial_session_dir="$git_root"
+else
+    initial_session_dir="$script_initial_dir"
+fi
+
+# Define popup dimensions and position
+popup_options="-w 80% -h 75% -x C -y C -d \"${initial_session_dir}\""
+
+# The core command for the new session, which will run in the popup.
+core_session_command="tmux new-session -A -D -s \"${session_name}\" -c \"${initial_session_dir}\" \"zsh -c 'source ~/.zshrc; gemini'\""
+
+# Now, launch the popup with this core command
+tmux display-popup -E ${popup_options} "${core_session_command}"
