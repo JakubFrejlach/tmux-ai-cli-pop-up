@@ -15,5 +15,5 @@ claude_key=${claude_key:-"u"}
 gemini_key=${gemini_key:-"j"}
 
 # Bind keys to launch AI sessions
-tmux bind-key "$claude_key" run-shell "zsh -c '$CURRENT_DIR/scripts/launch_claude_session \"#{pane_current_path}\"'"
-tmux bind-key "$gemini_key" run-shell "zsh -c '$CURRENT_DIR/scripts/launch_gemini_session \"#{pane_current_path}\"'"
+tmux bind-key "$claude_key" run-shell "$CURRENT_DIR/scripts/launch_claude_session '#{pane_current_path}'"
+tmux bind-key "$gemini_key" run-shell "$CURRENT_DIR/scripts/launch_gemini_session '#{pane_current_path}'"
